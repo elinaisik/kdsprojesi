@@ -26,6 +26,6 @@ Genel İş Skoru: İşletmenin genel müşteri memnuniyeti skoru.
 Departman Skorları: (Paketleme, kargo, müşteri hizmetleri, ürün kalitesi vb.) her departmanın ayrı şikayet analizi.
 Genel Şikayet Grafiği: Sentiment analizine göre oluşturulan dinamik bir şikayet grafiği.
 Şikayetlerin Dağılımı: Hangi departmanın daha fazla şikayet aldığına dair bir pasta grafiği.
-Ürün Bazlı Şikayetler: dropdown menülü seçilen ürün hakkında puan, şikayet gösterir
+Ürün Bazlı Şikayetler: dropdown menülü seçilen ürün hakkında puan, şikayet gösterir. 
 Ürünlerin karşılaştırmalı satış ,memnuniyet, şikayet, üçlü bar grafiği.
 
