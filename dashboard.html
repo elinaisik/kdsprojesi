@@ -1,0 +1,576 @@
+<!-- frontend/dashboard.html -->
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="dashboard-container">
+    <h1>İşletme Dashboard'u</h1>
+    
+    <!-- 1. Genel İşletme Skoru -->
+    <div class="business-score">
+      <h2>Genel İşletme Skoru: <span id="genel-skor">0</span>/10</h2>
+    </div>
+    
+    <!-- 2. Departman Puanları -->
+    <div class="departments">
+      <div class="department-box">
+        <h3>Paketleme</h3>
+        <p id="paketleme-puan">0/5</p>
+      </div>
+      <div class="department-box">
+        <h3>Kargo</h3>
+        <p id="kargo-puan">0/5</p>
+      </div>
+      <div class="department-box">
+        <h3>Müşteri Hizmetleri</h3>
+        <p id="musteri-hizmetleri-puan">0/5</p>
+      </div>
+      <div class="department-box">
+        <h3>Ürün</h3>
+        <p id="urun-puan">0/5</p>
+      </div>
+    </div>
+    
+    <!-- 3. Genel Şikayet Panosu -->
+    <div class="complaint-board">
+      <h2>Genel Şikayet Panosu</h2>
+      <canvas id="complaintChart"></canvas>
+    </div>
+    
+    <!-- 4. İnteraktif Dropdown Menü -->
+    <div class="dropdown-menu">
+      <label for="complaint-select">Şikayet Türü:</label>
+      <select id="complaint-select" onchange="updateComplaintBoard()">
+        <option value="genel">Genel</option>
+        <option value="departman">Departman Bazlı</option>
+        <option value="urun">Ürün Bazlı</option>
+      </select>
+    </div>
+    
+    <!-- 5. Ürün Bazlı Şikayetler için Ürün Seçimi -->
+    <div class="dropdown-menu" id="urun-dropdown" style="display: none;">
+      <label for="urun-select">Ürün Seçiniz:</label>
+      <select id="urun-select" onchange="fetchUrunDetails()">
+        <option value="">-- Seçiniz --</option>
+        <!-- Ürünler dinamik olarak yüklenecek -->
+      </select>
+    </div>
+    
+    <!-- 6. Ürün Detayları Bölümü -->
+    <div class="urun-detay" id="urun-detay" style="display: none;">
+      <h2>Ürün Detayları</h2>
+      <canvas id="urunYildizChart"></canvas>
+      <canvas id="urunSikayetChart"></canvas>
+      <canvas id="urunGenelPuanChart"></canvas>
+      <canvas id="urunSatisChart"></canvas>
+    </div>
+    
+    <!-- 7. Karşılaştırmalı Grafikler -->
+    <div class="karisilmali-grafikler">
+      <h2>Karşılaştırmalı Grafikler</h2>
+      <div class="dropdown-menu">
+        <label for="comparison-select">Karşılaştırma Türü:</label>
+        <select id="comparison-select" onchange="updateComparisonCharts()">
+          <option value="sikayet">Şikayet</option>
+          <option value="satis">Satış</option>
+          <option value="memnuniyet">Memnuniyet</option>
+        </select>
+      </div>
+      <canvas id="comparisonChart"></canvas>
+    </div>
+    
+    <!-- 8. Yıl Boyunca Satışlar Çizgi Grafiği -->
+    <div class="satis-cizgi-grafik">
+      <h2>Yıl Boyunca Satışlar</h2>
+      <canvas id="satisChart"></canvas>
+    </div>
+    
+    <!-- 9. Ürün Bazlı Satış Karşılaştırma Grafiği -->
+    <div class="urun-karisilmali-grafik">
+      <h2>Ürün Bazlı Satış Karşılaştırması</h2>
+      <canvas id="urunKarisilmaliChart"></canvas>
+    </div>
+    
+  </div>
+
+  <script>
+    // Dashboard Verilerini Çekme
+    document.addEventListener('DOMContentLoaded', function() {
+      fetchBusinessScore();
+      fetchDepartmentScores();
+      fetchComplaintData();
+      fetchUrunList();
+      fetchSatisVerileri();
+      fetchUrunKarisilmaliData();
+    });
+
+    // 1. Genel İşletme Skoru
+    function fetchBusinessScore() {
+      fetch('/api/business-score') // Relative path 
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('genel-skor').innerText = data;
+        })
+        .catch(error => console.error('Error fetching business score:', error));
+    }
+
+    // 2. Departman Puanları
+    function fetchDepartmentScores() {
+      fetch('/api/department-scores') // Relative path 
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('paketleme-puan').innerText = data.paketleme.toFixed(1) + '/5';
+          document.getElementById('kargo-puan').innerText = data.kargo.toFixed(1) + '/5';
+          document.getElementById('musteri-hizmetleri-puan').innerText = data.musteri_hizmetleri.toFixed(1) + '/5';
+          document.getElementById('urun-puan').innerText = data.urun.toFixed(1) + '/5';
+        })
+        .catch(error => console.error('Error fetching department scores:', error));
+    }
+
+    // 3. Genel Şikayet Panosu
+    let complaintChart;
+
+    function fetchComplaintData() {
+    fetch('/api/sentiment-analysis') 
+        .then(response => response.json())
+        .then(data => {
+        console.log('Şikayet Verileri:', data); 
+        // Örnek: { kargo: 12, paketleme: 5, müşteri: 8, ... }
+
+        const labels = Object.keys(data);   
+        const values = Object.values(data); // [12, 5, 8, ...]
+
+        const ctx = document.getElementById('complaintChart').getContext('2d');
+        complaintChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+            labels: labels,
+            datasets: [{
+                label: 'Şikayet Sayısı',
+                data: values,
+                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }]
+            },
+            options: {
+            indexAxis: 'y',           // Yatay bar için
+            scales: {
+                x: {
+                beginAtZero: true
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+            }
+        });
+        })
+        .catch(error => console.error('Error fetching complaint data:', error));
+    }
+
+    // 4. Dropdown Menüde Seçime Göre Grafik Güncelleme
+    function updateComplaintBoard() {
+      const selected = document.getElementById('complaint-select').value;
+      if (complaintChart) {
+        complaintChart.destroy();
+      }
+
+      if (selected === 'genel') {
+        fetchComplaintData();
+        document.getElementById('urun-dropdown').style.display = 'none';
+        document.getElementById('urun-detay').style.display = 'none';
+      } else if (selected === 'departman') {
+        fetchDepartmanSikayetData();
+        document.getElementById('urun-dropdown').style.display = 'none';
+        document.getElementById('urun-detay').style.display = 'none';
+      } else if (selected === 'urun') {
+        document.getElementById('urun-dropdown').style.display = 'block';
+        document.getElementById('urun-detay').style.display = 'none';
+      }
+    }
+
+    // 5. Departman Bazlı Şikayetler
+    function fetchDepartmanSikayetData() {
+      fetch('/api/departman-sikayet') 
+        .then(response => response.json())
+        .then(data => {
+          const labels = Object.keys(data);
+          const values = Object.values(data);
+          const ctx = document.getElementById('complaintChart').getContext('2d');
+          complaintChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Şikayet Sayısı',
+                data: values,
+                backgroundColor: [
+                  'rgba(255, 99, 132, 0.6)',
+                  'rgba(54, 162, 235, 0.6)',
+                  'rgba(255, 206, 86, 0.6)',
+                  'rgba(75, 192, 192, 0.6)',
+                  'rgba(153, 102, 255, 0.6)',
+                  'rgba(255, 159, 64, 0.6)'
+                ],
+                borderColor: [
+                  'rgba(255,99,132,1)',
+                  'rgba(54, 162, 235, 1)',
+                  'rgba(255, 206, 86, 1)',
+                  'rgba(75, 192, 192, 1)',
+                  'rgba(153, 102, 255, 1)',
+                  'rgba(255, 159, 64, 1)'
+                ],
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false
+            }
+          });
+        })
+        .catch(error => console.error('Error fetching departman sikayet data:', error));
+    }
+
+    // 6. Ürün Bazlı Şikayetler için Ürün Listesini Çekme
+    function fetchUrunList() {
+      fetch('/api/urun-sikayet') 
+        .then(response => response.json())
+        .then(data => {
+          const urunSelect = document.getElementById('urun-select');
+          urunSelect.innerHTML = '<option value="">-- Seçiniz --</option>'; 
+          Object.keys(data).forEach(urun => {
+            const option = document.createElement('option');
+            option.value = urun;
+            option.text = urun;
+            urunSelect.add(option);
+          });
+        })
+        .catch(error => console.error('Error fetching product list:', error));
+    }
+
+    // 7. Ürün Bazlı Şikayet ve Puanları Çekme
+    let urunYildizChart, urunSikayetChart, urunGenelPuanChart, urunSatisChart;
+
+    function fetchUrunDetails() {
+      const selectedUrun = document.getElementById('urun-select').value;
+      if (selectedUrun === '') {
+        document.getElementById('urun-detay').style.display = 'none';
+        return;
+      }
+      document.getElementById('urun-detay').style.display = 'block';
+      
+      // Ürün Bazlı Yıldız Puanları
+      fetch('/api/urun-memnuniyet') 
+        .then(response => response.json())
+        .then(data => {
+          const urunData = data.find(item => item.urun === selectedUrun);
+          if (urunData) {
+            const ctx = document.getElementById('urunYildizChart').getContext('2d');
+            if (urunYildizChart) urunYildizChart.destroy();
+            urunYildizChart = new Chart(ctx, {
+              type: 'radar',
+              data: {
+                labels: ['Paketleme', 'Kargo', 'Müşteri Hizmetleri', 'Ürün Puanı'],
+                datasets: [{
+                  label: selectedUrun + ' Yıldız Puanları',
+                  data: [
+                    parseFloat(urunData.paketleme_puan.toFixed(1)),
+                    parseFloat(urunData.kargo_puan.toFixed(1)),
+                    parseFloat(urunData.musteri_hizmetleri_puan.toFixed(1)),
+                    parseFloat(urunData.urun_puan.toFixed(1))
+                  ],
+                  backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                  borderColor: 'rgba(54, 162, 235, 1)',
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                scales: {
+                  r: {
+                    beginAtZero: true,
+                    max: 5
+                  }
+                },
+                responsive: true,
+                maintainAspectRatio: false
+              }
+            });
+          }
+        })
+        .catch(error => console.error('Error fetching product satisfaction ratings:', error));
+      
+      // Ürün Bazlı Şikayetler
+      fetch('/api/urun-sikayet') 
+        .then(response => response.json())
+        .then(data => {
+          const sikayetSayisi = data[selectedUrun] || 0;
+          const ctx = document.getElementById('urunSikayetChart').getContext('2d');
+          if (urunSikayetChart) urunSikayetChart.destroy();
+          urunSikayetChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: [selectedUrun],
+              datasets: [{
+                label: 'Şikayet Sayısı',
+                data: [sikayetSayisi],
+                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              indexAxis: 'y',
+              scales: {
+                x: {
+                  beginAtZero: true
+                }
+              },
+              responsive: true,
+              maintainAspectRatio: false
+            }
+          });
+        })
+        .catch(error => console.error('Error fetching product complaint data:', error));
+      
+      // Ürün Genel Puanı
+      fetch('/api/urun-memnuniyet') 
+        .then(response => response.json())
+        .then(data => {
+          const urunData = data.find(item => item.urun === selectedUrun);
+          if (urunData) {
+            const genelPuan = parseFloat(urunData.genel_memnuniyet.toFixed(1));
+            const ctx = document.getElementById('urunGenelPuanChart').getContext('2d');
+            if (urunGenelPuanChart) urunGenelPuanChart.destroy();
+            urunGenelPuanChart = new Chart(ctx, {
+              type: 'doughnut',
+              data: {
+                labels: ['Genel Puan', 'Eksik Puan'],
+                datasets: [{
+                  data: [genelPuan, 5 - genelPuan],
+                  backgroundColor: [
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(201, 203, 207, 0.6)'
+                  ],
+                  borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(201, 203, 207, 1)'
+                  ],
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false
+              }
+            });
+          }
+        })
+        .catch(error => console.error('Error fetching product overall score:', error));
+      
+      //  Ürün Bazlı Satışlar
+      fetch('/api/urun-satis') 
+        .then(response => response.json())
+        .then(data => {
+          const urunSatis = data.find(item => item.urun === selectedUrun);
+          if (urunSatis) {
+            const ctx = document.getElementById('urunSatisChart').getContext('2d');
+            if (urunSatisChart) urunSatisChart.destroy();
+            urunSatisChart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: ['Toplam Adet', 'Toplam Tutar'],
+                datasets: [{
+                  label: 'Satış Verileri',
+                  data: [urunSatis.toplam_adet, urunSatis.toplam_tutar],
+                  backgroundColor: [
+                    'rgba(255, 159, 64, 0.6)',
+                    'rgba(153, 102, 255, 0.6)'
+                  ],
+                  borderColor: [
+                    'rgba(255, 159, 64, 1)',
+                    'rgba(153, 102, 255, 1)'
+                  ],
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  y: {
+                    beginAtZero: true
+                  }
+                }
+              }
+            });
+          }
+        })
+        .catch(error => console.error('Error fetching product sales data:', error));
+    }
+
+    // 8. Yıl Boyunca Satış Verileri Endpoint'i
+    let satisChart;
+
+    function fetchSatisVerileri() {
+      fetch('/api/satis-verileri') 
+        .then(response => response.json())
+        .then(data => {
+          const labels = data.labels;
+          const values = data.values;
+          const ctx = document.getElementById('satisChart').getContext('2d');
+          satisChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Toplam Satış',
+                data: values,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
+        })
+        .catch(error => console.error('Error fetching sales data:', error));
+    }
+
+    // 9. Karşılaştırmalı Grafikler
+    let comparisonChart;
+
+    function updateComparisonCharts() {
+      const selected = document.getElementById('comparison-select').value;
+      if (comparisonChart) {
+        comparisonChart.destroy();
+      }
+
+      if (selected === 'sikayet') {
+        fetchComparisonData('sikayet');
+      } else if (selected === 'satis') {
+        fetchComparisonData('satis');
+      } else if (selected === 'memnuniyet') {
+        fetchComparisonData('memnuniyet');
+      }
+    }
+
+    function fetchComparisonData(tur) {
+      let url = '';
+      if (tur === 'sikayet') {
+        url = '/api/departman-sikayet';
+      } else if (tur === 'satis') {
+        url = '/api/urun-satis';
+      } else if (tur === 'memnuniyet') {
+        url = '/api/urun-memnuniyet';
+      }
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          let labels = [];
+          let values = [];
+          if (tur === 'sikayet') {
+            labels = Object.keys(data);
+            values = Object.values(data);
+          } else if (tur === 'satis') {
+            labels = data.map(item => item.urun);
+            values = data.map(item => item.toplam_tutar);
+          } else if (tur === 'memnuniyet') {
+            labels = data.map(item => item.urun);
+            values = data.map(item => parseFloat(item.genel_memnuniyet.toFixed(1)));
+          }
+
+          const ctx = document.getElementById('comparisonChart').getContext('2d');
+          comparisonChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: tur.charAt(0).toUpperCase() + tur.slice(1) + ' Verisi',
+                data: values,
+                backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                borderColor: 'rgba(255, 206, 86, 1)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              indexAxis: 'y',
+              scales: {
+                x: {
+                  beginAtZero: true
+                }
+              },
+              responsive: true,
+              maintainAspectRatio: false
+            }
+          });
+        })
+        .catch(error => console.error('Error fetching comparison data:', error));
+    }
+
+    // 10. Ürün Bazlı Satış Karşılaştırma Grafiği
+    let urunKarisilmaliChart;
+
+    function fetchUrunKarisilmaliData() {
+      fetch('/api/urun-satis') 
+        .then(response => response.json())
+        .then(data => {
+          const labels = data.map(item => item.urun);
+          const adetData = data.map(item => item.toplam_adet);
+          const tutarData = data.map(item => item.toplam_tutar);
+          
+          const ctx = document.getElementById('urunKarisilmaliChart').getContext('2d');
+          urunKarisilmaliChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: 'Toplam Adet',
+                  data: adetData,
+                  backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                  borderColor: 'rgba(54, 162, 235, 1)',
+                  borderWidth: 1
+                },
+                {
+                  label: 'Toplam Tutar',
+                  data: tutarData,
+                  backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                  borderColor: 'rgba(255, 206, 86, 1)',
+                  borderWidth: 1
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
+        })
+        .catch(error => console.error('Error fetching product sales data for comparison:', error));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+/* frontend/style.css */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+  }
+  
+  .dashboard-container {
+    padding: 20px;
+  }
+  
+  .dashboard-container h1 {
+    text-align: center;
+    color: #333;
+  }
+  
+  .business-score {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .departments {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+  }
+  
+  .department-box {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 22%;
+    margin: 10px 0;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  
+  .department-box h3 {
+    margin-bottom: 10px;
+    color: #555;
+  }
+  
+  .complaint-board, .urun-detay, .karisilmali-grafikler, .satis-cizgi-grafik, .urun-karisilmali-grafik {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+  }
+  
+  .complaint-board h2, .urun-detay h2, .karisilmali-grafikler h2, .satis-cizgi-grafik h2, .urun-karisilmali-grafik h2 {
+    text-align: center;
+    color: #333;
+  }
+  
+  .dropdown-menu {
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  
+  .dropdown-menu label {
+    margin-right: 10px;
+    font-weight: bold;
+  }
+  
+  .dropdown-menu select {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  
+  /* Grafiklerin boyutlandırılması */
+  canvas {
+    width: 100% !important;
+    height: 400px !important;
+  }
+  
+  /* Responsive Tasarım */
+  @media (max-width: 768px) {
+    .departments {
+      flex-direction: column;
+      align-items: center;
+    }
+  
+    .department-box {
+      width: 80%;
+      margin-bottom: 20px;
+    }
+    
+    .urun-detay, .karisilmali-grafikler, .satis-cizgi-grafik, .urun-karisilmali-grafik {
+      padding: 10px;
+    }
+  
+    canvas {
+      height: 300px !important;
+    }
+  }
